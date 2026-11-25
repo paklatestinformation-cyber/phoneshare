@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhoneShare Pro</title>
+<style>
+:root{--accent:#2563EB;--on-accent:#fff;--bg:#F6F7F9;--card:#fff;--text1:#1A1A1A;--text2:#8A8A8E;--line:#EFEFF0;--danger:#E0453A;--ok:#1B7A43;--radius:16px;--pad:16px;--gap:12px}
+@media(prefers-color-scheme:dark){:root{--bg:#121214;--card:#1E1E20;--text1:#F2F2F4;--text2:#9A9AA0;--line:#2A2A2E}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text1);font:400 15px/1.45 -apple-system,"Segoe UI",Roboto,sans-serif;padding:var(--pad)}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--text2);font-size:13px;margin:0 0 12px}
+.card{background:var(--card);border-radius:var(--radius);padding:var(--pad);margin-bottom:var(--gap)}
+.row{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.icon{width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+.grow{flex:1;min-width:0}
+.name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{font-size:12px;color:var(--text2)}
+.actions{display:flex;gap:6px}
+.btn{height:36px;padding:0 12px;border:0;border-radius:18px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+.btn.out{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.danger{background:var(--danger)}
+.search{width:100%;height:44px;border:1px solid var(--line);border-radius:22px;padding:0 16px;background:var(--card);color:var(--text1);margin-bottom:12px}
+.upload{border:2px dashed var(--line);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text2);margin-bottom:12px}
+.progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px;display:none}
+.progress>div{height:100%;background:var(--accent);width:0%}
+.pct{text-align:center;font-size:12px;color:var(--text2);margin-top:4px;display:none}
+.preview{max-width:100%;max-height:70vh;border-radius:12px;margin:8px 0}
+.empty{text-align:center;color:var(--text2);padding:40px 0}
+.dev{text-align:center;padding:24px 0;color:var(--text2);font-size:12px}
+.dev a{color:var(--accent);text-decoration:none;font-weight:600}
+.crumb{font-size:13px;color:var(--text2);margin-bottom:8px}
+</style>
+</head>
+<body>
+<h1>PhoneShare Pro</h1>
+<p class="sub">Browse &amp; manage files from this phone</p>
+<input id="search" class="search" placeholder="Search files..." oninput="render()">
+<div class="upload" id="drop">
+  <div>Drag &amp; drop or click to upload</div>
+  <input type="file" id="fileInput" multiple style="display:none">
+  <div class="progress" id="prog"><div id="bar"></div></div>
+  <div class="pct" id="pct">0%</div>
+</div>
+<div class="crumb" id="crumb">/</div>
+<div id="list"></div>
+<div class="empty" id="empty" style="display:none">No files here</div>
+
+<div class="dev">
+  Developer: <b>Muhammad Kamran Malik</b><br>
+  <a href="tel:+923015614357">+923015614357</a>
+</div>
+
+<script>
+let currentPath = '';
+let items = [];
+const $ = id => document.getElementById(id);
+
+async function load(path) {
+  currentPath = path || '';
+  const r = await fetch('/api/list?path=' + encodeURIComponent(currentPath));
+  const d = await r.json();
+  items = d.items || [];
+  $('crumb').textContent = '/' + currentPath;
+  render();
+}
+
+function iconFor(ext, isDir) {
+  if (isDir) return 'DIR';
+  const e = (ext||'').toLowerCase();
+  const map = {png:'IMG',jpg:'IMG',jpeg:'IMG',gif:'IMG',webp:'IMG',
+    pdf:'PDF',mp4:'VID',mp3:'AUD',zip:'ZIP',txt:'TXT',json:'JSON'};
+  return map[e] || (e.toUpperCase().slice(0,3) || 'FILE');
+}
+
+function fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';if(b<1073741824)return (b/1048576).toFixed(1)+' MB';return (b/1073741824).toFixed(1)+' GB';}
+function fmtDate(ts){const d=new Date(ts);return d.toLocaleDateString()+' '+d.toLocaleTimeString();}
+
+function render() {
+  const q = $('search').value.toLowerCase();
+  const filtered = items.filter(i => i.name.toLowerCase().includes(q));
+  const list = $('list'); list.innerHTML = '';
+  $('empty').style.display = filtered.length ? 'none' : 'block';
+  filtered.forEach(it => {
+    const row = document.createElement('div'); row.className='row';
+    const ic = document.createElement('div'); ic.className='icon'; ic.textContent = iconFor(it.ext, it.isDir);
+    const grow = document.createElement('div'); grow.className='grow';
+    const nm = document.createElement('div'); nm.className='name'; nm.textContent = it.name;
+    const mt = document.createElement('div'); mt.className='meta';
+    mt.textContent = (it.isDir?'Folder':fmtSize(it.size)) + '  •  ' + fmtDate(it.lastModified);
+    grow.appendChild(nm); grow.appendChild(mt);
+    const acts = document.createElement('div'); acts.className='actions';
+    if (!it.isDir) {
+      const view = document.createElement('button'); view.className='btn out'; view.textContent='View';
+      view.onclick = () => viewFile(it.relPath, it.ext);
+      const dl = document.createElement('button'); dl.className='btn'; dl.textContent='DL';
+      dl.onclick = () => { location.href = '/download/' + encodeURIComponent(it.relPath); };
+      const pr = document.createElement('button'); pr.className='btn out'; pr.textContent='Print';
+      pr.onclick = () => printFile(it.relPath);
+      acts.appendChild(view); acts.appendChild(dl); acts.appendChild(pr);
+    }
+    const del = document.createElement('button'); del.className='btn danger'; del.textContent='Del';
+    del.onclick = async () => { if(!confirm('Delete '+it.name+'?'))return;
+      await fetch('/api/delete?path='+encodeURIComponent(it.relPath));
+      load(currentPath); };
+    acts.appendChild(del);
+    if (it.isDir) {
+      row.style.cursor='pointer';
+      row.onclick = (e) => { if(e.target.tagName!=='BUTTON') load(it.relPath); };
+    }
+    row.appendChild(ic); row.appendChild(grow); row.appendChild(acts);
+    list.appendChild(row);
+  });
+}
+
+async function viewFile(rel, ext) {
+  const e = (ext||'').toLowerCase();
+  if (['png','jpg','jpeg','gif','webp'].includes(e)) {
+    const img = document.createElement('img'); img.className='preview'; img.src='/view/'+encodeURIComponent(rel);
+    showModal(img);
+  } else if (e === 'pdf') {
+    const iframe = document.createElement('iframe'); iframe.className='preview'; iframe.style.width='100%'; iframe.style.height='70vh';
+    iframe.src='/view/'+encodeURIComponent(rel);
+    showModal(iframe);
+  } else if (['txt','json','csv','log','md'].includes(e)) {
+    const r = await fetch('/view/'+encodeURIComponent(rel)); const t = await r.text();
+    const pre = document.createElement('pre'); pre.style.whiteSpace='pre-wrap'; pre.textContent = t.slice(0,20000);
+    showModal(pre);
+  } else {
+    window.open('/view/'+encodeURIComponent(rel));
+  }
+}
+
+function showModal(node) {
+  const m = document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px';
+  const box = document.createElement('div');
+  box.style.cssText='background:var(--card);border-radius:16px;padding:16px;max-width:95vw;max-height:95vh;overflow:auto';
+  const close = document.createElement('button'); close.className='btn'; close.textContent='Close'; close.style.marginBottom='8px';
+  close.onclick = () => m.remove();
+  box.appendChild(close); box.appendChild(node);
+  m.appendChild(box); m.onclick = (e) => { if(e.target===m) m.remove(); };
+  document.body.appendChild(m);
+}
+
+function printFile(rel) {
+  const w = window.open('/view/'+encodeURIComponent(rel));
+  if (w) { w.onload = () => { w.print(); }; }
+}
+
+// upload
+const drop = $('drop');
+const fileInput = $('fileInput');
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.borderColor='var(--accent)'; });
+drop.addEventListener('dragleave', () => drop.style.borderColor='var(--line)');
+drop.addEventListener('drop', e => { e.preventDefault(); drop.style.borderColor='var(--line)'; uploadFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => uploadFiles(e.target.files));
+
+async function uploadFiles(files) {
+  for (const f of files) {
+    const fd = new FormData();
+    fd.append('file', f, f.name);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload?path=' + encodeURIComponent(currentPath) + '&filename=' + encodeURIComponent(f.name));
+    $('prog').style.display='block'; $('pct').style.display='block';
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const p = Math.round(e.loaded/e.total*100);
+        $('bar').style.width = p+'%';
+        $('pct').textContent = p+'%  —  '+f.name;
+      }
+    };
+    xhr.onload = () => { $('prog').style.display='none'; $('pct').style.display='none'; $('bar').style.width='0%'; load(currentPath); };
+    xhr.onerror = () => { alert('Upload failed'); };
+    xhr.send(fd);
+  }
+}
+
+load('');
+</script>
+</body>
+</html>

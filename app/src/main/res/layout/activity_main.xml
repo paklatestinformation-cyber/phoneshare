@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/bg">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar" android:layout_width="match_parent" android:layout_height="56dp"
+        android:background="@color/card" app:title="PhoneShare Pro" app:titleTextColor="@color/text_primary" />
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:fillViewport="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+
+            <!-- IP card -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:background="@color/card"
+                android:padding="16dp" android:layout_marginBottom="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="SERVER IP" android:textSize="11sp" android:textStyle="bold"
+                    android:textColor="@color/text_secondary" android:letterSpacing="0.08" />
+                <TextView android:id="@+id/ipText" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="Not running"
+                    android:textSize="20sp" android:textStyle="bold" android:textColor="@color/accent"
+                    android:layout_marginTop="4dp" />
+                <TextView android:id="@+id/statusText" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="Tap Start to share files"
+                    android:textSize="13sp" android:textColor="@color/text_secondary"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <!-- Controls -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="12dp">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/startBtn" android:layout_width="0dp" android:layout_height="56dp"
+                    android:layout_weight="1" android:text="START" android:layout_marginEnd="8dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/stopBtn" android:layout_width="0dp" android:layout_height="56dp"
+                    android:layout_weight="1" android:text="STOP" style="@style/Widget.Material3.Button.OutlinedButton" />
+            </LinearLayout>
+
+            <!-- Theme toggle -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/themeBtn" android:layout_width="match_parent" android:layout_height="48dp"
+                android:text="Toggle Light/Dark" style="@style/Widget.Material3.Button.TextButton"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Search -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="Search files..." app:startIconDrawable="@android:drawable/ic_menu_search"
+                android:layout_marginBottom="12dp">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/searchEdit" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- File list -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/fileList" android:layout_width="match_parent"
+                android:layout_height="400dp" android:nestedScrollingEnabled="false" />
+
+            <!-- Empty state -->
+            <TextView android:id="@+id/emptyText" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="No files shared yet"
+                android:gravity="center" android:padding="24dp" android:textColor="@color/text_secondary"
+                android:visibility="gone" />
+
+            <!-- Developer credit -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:gravity="center" android:padding="16dp"
+                android:layout_marginTop="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Developer" android:textSize="11sp" android:textStyle="bold"
+                    android:textColor="@color/text_secondary" />
+                <TextView android:id="@+id/devName" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:text="Muhammad Kamran Malik"
+                    android:textSize="14sp" android:textStyle="bold" android:textColor="@color/accent"
+                    android:layout_marginTop="2dp" />
+                <TextView android:id="@+id/devContact" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:text="+923015614357"
+                    android:textSize="13sp" android:textColor="@color/accent" android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

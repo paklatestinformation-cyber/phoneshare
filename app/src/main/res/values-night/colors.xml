@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#2563EB</color>
+    <color name="accent_light">#1E3A5F</color>
+    <color name="bg">#121214</color>
+    <color name="card">#1E1E20</color>
+    <color name="text_primary">#F2F2F4</color>
+    <color name="text_secondary">#9A9AA0</color>
+    <color name="text_disabled">#5A5A60</color>
+    <color name="line">#2A2A2E</color>
+    <color name="danger">#E0453A</color>
+    <color name="ok">#1B7A43</color>
+    <color name="ic_launcher_background">#2563EB</color>
+</resources>
