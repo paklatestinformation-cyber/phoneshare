@@ -1,30 +1,21 @@
 package com.zyvo.phoneshare;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.media.AudioManager;
-import android.media.ToneGenerator;
 import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.Settings;
+import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,6 +23,8 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.util.ArrayList;
@@ -39,54 +32,50 @@ import java.util.Collections;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    private static final int REQ_PERM = 100;
+    private static final int REQ_PICK = 200;
     private FileServer server;
     private File rootDir;
     private RecyclerView recycler;
     private FileAdapter adapter;
     private List<File> allFiles = new ArrayList<>();
     private TextView ipText, statusText, emptyText;
-    private MaterialButton startBtn, stopBtn;
     private TextInputEditText searchEdit;
-    private ToneGenerator tone;
+    private ProgressBar uploadProgress;
+    private ToneHelper tone;
 
     @Override
     protected void onCreate(Bundle b) {
-        // theme
         SharedPreferences sp = getSharedPreferences("ps", MODE_PRIVATE);
         int mode = sp.getInt("theme", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
         AppCompatDelegate.setDefaultNightMode(mode);
         super.onCreate(b);
         setContentView(R.layout.activity_main);
 
-        rootDir = Environment.getExternalStorageDirectory();
-        if (rootDir == null || !rootDir.exists()) rootDir = getFilesDir();
+        rootDir = new File(getFilesDir(), "shared");
+        if (!rootDir.exists()) rootDir.mkdirs();
 
         ipText = findViewById(R.id.ipText);
         statusText = findViewById(R.id.statusText);
         emptyText = findViewById(R.id.emptyText);
-        startBtn = findViewById(R.id.startBtn);
-        stopBtn = findViewById(R.id.stopBtn);
         searchEdit = findViewById(R.id.searchEdit);
+        uploadProgress = findViewById(R.id.uploadProgress);
         recycler = findViewById(R.id.fileList);
         recycler.setLayoutManager(new LinearLayoutManager(this));
         adapter = new FileAdapter();
         recycler.setAdapter(adapter);
 
-        tone = new ToneGenerator(AudioManager.STREAM_MUSIC, 80);
+        tone = new ToneHelper();
 
-        startBtn.setOnClickListener(v -> { clickSound(); startServer(); });
-        stopBtn.setOnClickListener(v -> { clickSound(); stopServer(); });
-        findViewById(R.id.themeBtn).setOnClickListener(v -> { clickSound(); toggleTheme(); });
+        findViewById(R.id.addFilesBtn).setOnClickListener(v -> { tone.click(); pickFiles(); });
+        findViewById(R.id.themeBtn).setOnClickListener(v -> { tone.click(); toggleTheme(); });
 
         TextView devContact = findViewById(R.id.devContact);
         devContact.setOnClickListener(v -> {
-            clickSound();
+            tone.click();
             Intent i = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:+923015614357"));
             startActivity(i);
         });
-        TextView devName = findViewById(R.id.devName);
-        devName.setOnClickListener(v -> clickSound());
+        findViewById(R.id.devName).setOnClickListener(v -> tone.click());
 
         searchEdit.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int a, int c, int n) {}
@@ -94,61 +83,29 @@ public class MainActivity extends AppCompatActivity {
             public void afterTextChanged(Editable s) {}
         });
 
-        requestPerms();
+        autoStart();
         refreshList();
     }
 
-    private void clickSound() {
-        try { tone.startTone(ToneGenerator.TONE_PROP_BEEP, 80); } catch (Exception ignored) {}
-    }
+    private void toneClick() { tone.click(); }
 
-    private void requestPerms() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                try {
-                    Intent i = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                    i.setData(Uri.parse("package:" + getPackageName()));
-                    startActivity(i);
-                } catch (Exception e) {
-                    Intent i = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                    startActivity(i);
-                }
-            }
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQ_PERM);
-            }
-        }
-    }
-
-    private void startServer() {
+    private void autoStart() {
         try {
-            if (server != null) { Toast.makeText(this, "Already running", Toast.LENGTH_SHORT).show(); return; }
             server = new FileServer(this, rootDir);
             server.start();
             String ip = getIp();
             ipText.setText(ip + ":" + FileServer.PORT);
-            statusText.setText("Running — open in browser");
-            Toast.makeText(this, "Server started", Toast.LENGTH_SHORT).show();
+            statusText.setText("Sharing active");
         } catch (Exception e) {
-            Toast.makeText(this, "Start failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            ipText.setText("Start failed");
+            statusText.setText(e.getMessage());
         }
-    }
-
-    private void stopServer() {
-        if (server != null) {
-            server.stop();
-            server = null;
-        }
-        ipText.setText("Not running");
-        statusText.setText("Tap Start to share files");
     }
 
     private String getIp() {
         try {
-            // try wifi
-            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-            WifiInfo wi = wm.getConnectionInfo();
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            android.net.wifi.WifiInfo wi = wm.getConnectionInfo();
             int ip = wi.getIpAddress();
             if (ip != 0) {
                 return String.format("%d.%d.%d.%d", (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
@@ -166,20 +123,73 @@ public class MainActivity extends AppCompatActivity {
         return "127.0.0.1";
     }
 
-    private void refreshList() {
-        allFiles.clear();
-        collect(rootDir, 0);
-        filter(searchEdit.getText() == null ? "" : searchEdit.getText().toString());
+    private void pickFiles() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        startActivityForResult(i, REQ_PICK);
     }
 
-    private void collect(File dir, int depth) {
-        if (depth > 2) return;
-        File[] fs = dir.listFiles();
-        if (fs == null) return;
-        for (File f : fs) {
-            allFiles.add(f);
-            if (f.isDirectory() && depth < 2) collect(f, depth + 1);
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != REQ_PICK || res != Activity.RESULT_OK || data == null) return;
+        List<Uri> uris = new ArrayList<>();
+        if (data.getClipData() != null) {
+            for (int i = 0; i < data.getClipData().getItemCount(); i++)
+                uris.add(data.getClipData().getItemAt(i).getUri());
+        } else if (data.getData() != null) {
+            uris.add(data.getData());
         }
+        if (uris.isEmpty()) return;
+        uploadProgress.setVisibility(View.VISIBLE);
+        uploadProgress.setMax(uris.size());
+        uploadProgress.setProgress(0);
+        new Thread(() -> {
+            int done = 0;
+            for (Uri u : uris) {
+                try {
+                    String name = queryName(u);
+                    if (name == null) name = "file_" + System.currentTimeMillis();
+                    File dest = new File(rootDir, name);
+                    int i = 1; String base = name, ext = "";
+                    int dot = name.lastIndexOf('.');
+                    if (dot > 0) { base = name.substring(0, dot); ext = name.substring(dot); }
+                    while (dest.exists()) { dest = new File(rootDir, base + "_" + i + ext); i++; }
+                    try (InputStream in = getContentResolver().openInputStream(u);
+                         FileOutputStream out = new FileOutputStream(dest)) {
+                        byte[] buf = new byte[8192]; int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    }
+                } catch (Exception ignored) {}
+                done++;
+                final int d = done;
+                runOnUiThread(() -> uploadProgress.setProgress(d));
+            }
+            runOnUiThread(() -> {
+                uploadProgress.setVisibility(View.GONE);
+                Toast.makeText(this, "Added " + uris.size() + " file(s)", Toast.LENGTH_SHORT).show();
+                refreshList();
+            });
+        }).start();
+    }
+
+    private String queryName(Uri uri) {
+        try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
+            if (c != null && c.moveToFirst()) {
+                int idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (idx >= 0) return c.getString(idx);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void refreshList() {
+        allFiles.clear();
+        File[] fs = rootDir.listFiles();
+        if (fs != null) for (File f : fs) allFiles.add(f);
+        filter(searchEdit.getText() == null ? "" : searchEdit.getText().toString());
     }
 
     private void filter(String q) {
@@ -204,8 +214,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopServer();
-        try { tone.release(); } catch (Exception ignored) {}
+        if (server != null) { server.stop(); server = null; }
     }
 
     // ---- adapter ----
@@ -219,12 +228,12 @@ public class MainActivity extends AppCompatActivity {
         }
         public void onBindViewHolder(VH h, int pos) {
             File f = items.get(pos);
-            h.t1.setText(f.getName() + (f.isDirectory() ? "/" : ""));
+            h.t1.setText(f.getName());
             long sz = f.length();
-            String meta = (f.isDirectory() ? "Folder" : formatSize(sz)) + "  •  " + new java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(f.lastModified()));
+            String meta = formatSize(sz) + "  •  " + new java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(f.lastModified()));
             h.t2.setText(meta);
-            h.itemView.setOnClickListener(v -> { clickSound(); openFile(f); });
-            h.itemView.setOnLongClickListener(v -> { clickSound(); deleteFile(f); return true; });
+            h.itemView.setOnClickListener(v -> { tone.click(); openFile(f); });
+            h.itemView.setOnLongClickListener(v -> { tone.click(); deleteFile(f); return true; });
         }
         class VH extends RecyclerView.ViewHolder {
             TextView t1, t2;
@@ -246,15 +255,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deleteFile(File f) {
-        boolean ok = f.isDirectory() ? deleteDir(f) : f.delete();
+        boolean ok = f.delete();
         Toast.makeText(this, ok ? "Deleted" : "Failed", Toast.LENGTH_SHORT).show();
         refreshList();
-    }
-
-    private boolean deleteDir(File d) {
-        File[] fs = d.listFiles();
-        if (fs != null) for (File x : fs) { if (x.isDirectory()) deleteDir(x); else x.delete(); }
-        return d.delete();
     }
 
     private String formatSize(long b) {
@@ -272,5 +275,16 @@ public class MainActivity extends AppCompatActivity {
         if (n.endsWith(".mp3")) return "audio/*";
         if (n.endsWith(".txt")) return "text/plain";
         return "*/*";
+    }
+
+    // simple tone helper
+    static class ToneHelper {
+        private android.media.ToneGenerator tg;
+        ToneHelper() {
+            try { tg = new android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 80); } catch (Exception ignored) {}
+        }
+        void click() {
+            try { if (tg != null) tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 80); } catch (Exception ignored) {}
+        }
     }
 }
