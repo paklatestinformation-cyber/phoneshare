@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -42,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private TextInputEditText searchEdit;
     private ProgressBar uploadProgress;
     private ToneHelper tone;
+    private Handler refreshHandler;
+    private Runnable refreshRunnable;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -85,6 +89,9 @@ public class MainActivity extends AppCompatActivity {
 
         autoStart();
         refreshList();
+        refreshHandler = new Handler(Looper.getMainLooper());
+        refreshRunnable = new Runnable() { public void run() { refreshList(); refreshHandler.postDelayed(this, 3000); } };
+        refreshHandler.postDelayed(refreshRunnable, 3000);
     }
 
     private void toneClick() { tone.click(); }
@@ -214,6 +221,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (refreshHandler != null && refreshRunnable != null) refreshHandler.removeCallbacks(refreshRunnable);
         if (server != null) { server.stop(); server = null; }
     }
 
@@ -223,21 +231,57 @@ public class MainActivity extends AppCompatActivity {
         void setItems(List<File> i) { items = i; notifyDataSetChanged(); }
         public int getItemCount() { return items.size(); }
         public VH onCreateViewHolder(android.view.ViewGroup p, int t) {
-            View v = getLayoutInflater().inflate(android.R.layout.simple_list_item_2, p, false);
+            View v = getLayoutInflater().inflate(R.layout.item_file, p, false);
             return new VH(v);
         }
         public void onBindViewHolder(VH h, int pos) {
             File f = items.get(pos);
-            h.t1.setText(f.getName());
+            h.name.setText(f.getName());
+            h.icon.setText(iconFor(f.getName()));
             long sz = f.length();
             String meta = formatSize(sz) + "  •  " + new java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(f.lastModified()));
-            h.t2.setText(meta);
+            h.meta.setText(meta);
             h.itemView.setOnClickListener(v -> { tone.click(); openFile(f); });
-            h.itemView.setOnLongClickListener(v -> { tone.click(); deleteFile(f); return true; });
+            h.btnShare.setOnClickListener(v -> { tone.click(); shareFile(f); });
+            h.btnDelete.setOnClickListener(v -> { tone.click(); deleteFile(f); });
         }
         class VH extends RecyclerView.ViewHolder {
-            TextView t1, t2;
-            VH(View v) { super(v); t1 = v.findViewById(android.R.id.text1); t2 = v.findViewById(android.R.id.text2); }
+            TextView icon, name, meta;
+            android.widget.ImageButton btnShare, btnDelete;
+            VH(View v) {
+                super(v);
+                icon = v.findViewById(R.id.icon);
+                name = v.findViewById(R.id.name);
+                meta = v.findViewById(R.id.meta);
+                btnShare = v.findViewById(R.id.btnShare);
+                btnDelete = v.findViewById(R.id.btnDelete);
+            }
+        }
+    }
+
+    private String iconFor(String name) {
+        String n = name.toLowerCase();
+        int dot = n.lastIndexOf('.');
+        String e = dot >= 0 ? n.substring(dot + 1) : "";
+        if (e.equals("png")||e.equals("jpg")||e.equals("jpeg")||e.equals("gif")||e.equals("webp")) return "IMG";
+        if (e.equals("pdf")) return "PDF";
+        if (e.equals("mp4")) return "VID";
+        if (e.equals("mp3")) return "AUD";
+        if (e.equals("zip")) return "ZIP";
+        if (e.equals("txt")) return "TXT";
+        return e.isEmpty() ? "FILE" : e.toUpperCase().substring(0, Math.min(3, e.length()));
+    }
+
+    private void shareFile(File f) {
+        try {
+            Uri uri = androidx.core.content.FileProvider.getUriForFile(this, getPackageName() + ".provider", f);
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType(guessMime(f.getName()));
+            i.putExtra(Intent.EXTRA_STREAM, uri);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(i, "Share " + f.getName()));
+        } catch (Exception e) {
+            Toast.makeText(this, "Share failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
