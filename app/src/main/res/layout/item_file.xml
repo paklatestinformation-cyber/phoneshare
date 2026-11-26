@@ -23,6 +23,9 @@
 
     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:orientation="horizontal">
+        <ImageButton android:id="@+id/btnDownload" android:layout_width="40dp"
+            android:layout_height="40dp" android:background="?attr/selectableItemBackground"
+            android:src="@android:drawable/stat_sys_download" android:contentDescription="Download" />
         <ImageButton android:id="@+id/btnShare" android:layout_width="40dp"
             android:layout_height="40dp" android:background="?attr/selectableItemBackground"
             android:src="@android:drawable/ic_menu_share" android:contentDescription="Share" />

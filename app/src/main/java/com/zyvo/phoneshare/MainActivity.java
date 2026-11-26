@@ -242,17 +242,19 @@ public class MainActivity extends AppCompatActivity {
             String meta = formatSize(sz) + "  •  " + new java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(f.lastModified()));
             h.meta.setText(meta);
             h.itemView.setOnClickListener(v -> { tone.click(); openFile(f); });
+            h.btnDownload.setOnClickListener(v -> { tone.click(); downloadFile(f); });
             h.btnShare.setOnClickListener(v -> { tone.click(); shareFile(f); });
             h.btnDelete.setOnClickListener(v -> { tone.click(); deleteFile(f); });
         }
         class VH extends RecyclerView.ViewHolder {
             TextView icon, name, meta;
-            android.widget.ImageButton btnShare, btnDelete;
+            android.widget.ImageButton btnDownload, btnShare, btnDelete;
             VH(View v) {
                 super(v);
                 icon = v.findViewById(R.id.icon);
                 name = v.findViewById(R.id.name);
                 meta = v.findViewById(R.id.meta);
+                btnDownload = v.findViewById(R.id.btnDownload);
                 btnShare = v.findViewById(R.id.btnShare);
                 btnDelete = v.findViewById(R.id.btnDelete);
             }
@@ -270,6 +272,26 @@ public class MainActivity extends AppCompatActivity {
         if (e.equals("zip")) return "ZIP";
         if (e.equals("txt")) return "TXT";
         return e.isEmpty() ? "FILE" : e.toUpperCase().substring(0, Math.min(3, e.length()));
+    }
+
+    private void downloadFile(File f) {
+        try {
+            File downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+            if (!downloads.exists()) downloads.mkdirs();
+            File dest = new File(downloads, f.getName());
+            int i = 1; String base = f.getName(), ext = "";
+            int dot = f.getName().lastIndexOf('.');
+            if (dot > 0) { base = f.getName().substring(0, dot); ext = f.getName().substring(dot); }
+            while (dest.exists()) { dest = new File(downloads, base + "_" + i + ext); i++; }
+            try (java.io.InputStream in = new java.io.FileInputStream(f);
+                 java.io.FileOutputStream out = new java.io.FileOutputStream(dest)) {
+                byte[] buf = new byte[8192]; int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            }
+            Toast.makeText(this, "Saved to Downloads: " + dest.getName(), Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void shareFile(File f) {
