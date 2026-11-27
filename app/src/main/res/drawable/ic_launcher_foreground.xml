@@ -4,5 +4,5 @@
     <path android:strokeColor="#FFFFFF" android:strokeWidth="11"
         android:strokeLineCap="round" android:strokeLineJoin="round"
         android:pathData="M32,30 L32,78 M76,30 L76,78 M32,30 L76,78" />
-    <circle android:fillColor="#FFFFFF" android:cx="54" android:cy="54" android:r="4" />
+    <path android:fillColor="#FFFFFF" android:pathData="M50,54 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
 </vector>
