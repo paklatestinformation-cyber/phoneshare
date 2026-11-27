@@ -13,38 +13,49 @@
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="vertical" android:padding="16dp">
 
-            <!-- Header with logo -->
+            <!-- Header -->
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="horizontal" android:gravity="center_vertical"
                 android:layout_marginBottom="12dp">
-                <ImageView android:layout_width="48dp" android:layout_height="48dp"
+                <ImageView android:layout_width="44dp" android:layout_height="44dp"
                     android:src="@mipmap/ic_launcher" android:contentDescription="NexLink" />
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                     android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                         android:text="NexLink" android:textSize="20sp" android:textStyle="bold"
-                        android:textColor="@color/text_primary" />
-                    <TextView android:id="@+id/statusText" android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" android:text="Sharing active"
-                        android:textSize="12sp" android:textColor="@color/ok" />
+                        android:textColor="@color/text_primary" android:fontFamily="monospace" />
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="2dp">
+                        <View android:layout_width="8dp" android:layout_height="8dp"
+                            android:background="@color/ok" android:layout_marginEnd="6dp" />
+                        <TextView android:id="@+id/statusText" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="Sharing active"
+                            android:textSize="12sp" android:textColor="@color/ok" android:fontFamily="monospace" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- IP card -->
+            <!-- IP card (digital) -->
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="vertical" android:background="@color/card"
                 android:padding="16dp" android:layout_marginBottom="12dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="BROWSER ADDRESS" android:textSize="11sp" android:textStyle="bold"
-                    android:textColor="@color/text_secondary" android:letterSpacing="0.08" />
+                    android:textColor="@color/text_secondary" android:letterSpacing="0.12" android:fontFamily="monospace" />
                 <TextView android:id="@+id/ipText" android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:text="Starting..."
-                    android:textSize="20sp" android:textStyle="bold" android:textColor="@color/accent"
-                    android:layout_marginTop="4dp" />
+                    android:textSize="22sp" android:textStyle="bold" android:textColor="@color/accent"
+                    android:layout_marginTop="4dp" android:fontFamily="monospace"
+                    android:letterSpacing="0.05" />
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:text="Open this address on your PC or other device"
+                    android:text="Open this address on your PC or other device (same WiFi)"
                     android:textSize="12sp" android:textColor="@color/text_secondary"
                     android:layout_marginTop="4dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/stopBtn" android:layout_width="wrap_content"
+                    android:layout_height="36dp" android:text="Stop sharing"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:textColor="@color/danger" android:layout_marginTop="8dp" />
             </LinearLayout>
 
             <!-- Add files -->

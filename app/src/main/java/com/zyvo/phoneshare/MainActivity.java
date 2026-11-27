@@ -57,6 +57,13 @@ public class MainActivity extends AppCompatActivity {
 
         rootDir = new File(getFilesDir(), "shared");
         if (!rootDir.exists()) rootDir.mkdirs();
+        // Start foreground service so sharing survives sleep/screen-off
+        Intent svc = new Intent(this, ShareService.class);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(svc);
+        } else {
+            startService(svc);
+        }
 
         ipText = findViewById(R.id.ipText);
         statusText = findViewById(R.id.statusText);
@@ -72,6 +79,13 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.addFilesBtn).setOnClickListener(v -> { tone.click(); pickFiles(); });
         findViewById(R.id.themeBtn).setOnClickListener(v -> { tone.click(); toggleTheme(); });
+        findViewById(R.id.stopBtn).setOnClickListener(v -> {
+            tone.click();
+            stopService(new Intent(this, ShareService.class));
+            statusText.setText("Sharing stopped");
+            statusText.setTextColor(getColor(R.color.danger));
+            ipText.setText("—");
+        });
 
         TextView devContact = findViewById(R.id.devContact);
         devContact.setOnClickListener(v -> {
@@ -97,16 +111,24 @@ public class MainActivity extends AppCompatActivity {
     private void toneClick() { tone.click(); }
 
     private void autoStart() {
-        try {
-            server = new FileServer(this, rootDir);
-            server.start();
-            String ip = getIp();
-            ipText.setText(ip + ":" + FileServer.PORT);
-            statusText.setText("Sharing active");
-        } catch (Exception e) {
-            ipText.setText("Start failed");
-            statusText.setText(e.getMessage());
-        }
+        // Wait briefly for the foreground service to bring up the server
+        new Thread(() -> {
+            for (int i = 0; i < 20; i++) {
+                if (ShareService.isRunning() && ShareService.getServer() != null) break;
+                try { Thread.sleep(250); } catch (InterruptedException ignored) {}
+            }
+            runOnUiThread(() -> {
+                server = ShareService.getServer();
+                String ip = getIp();
+                if (ShareService.isRunning()) {
+                    ipText.setText(ip + ":" + FileServer.PORT);
+                    statusText.setText("Sharing active (background)");
+                } else {
+                    ipText.setText("Start failed");
+                    statusText.setText("Service not running");
+                }
+            });
+        }).start();
     }
 
     private String getIp() {
@@ -222,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (refreshHandler != null && refreshRunnable != null) refreshHandler.removeCallbacks(refreshRunnable);
-        if (server != null) { server.stop(); server = null; }
+        // Do NOT stop the server here — ShareService keeps it alive in background.
     }
 
     // ---- adapter ----
