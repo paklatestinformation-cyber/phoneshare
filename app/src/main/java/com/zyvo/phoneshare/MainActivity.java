@@ -297,23 +297,44 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void downloadFile(File f) {
-        try {
-            File downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-            if (!downloads.exists()) downloads.mkdirs();
-            File dest = new File(downloads, f.getName());
-            int i = 1; String base = f.getName(), ext = "";
-            int dot = f.getName().lastIndexOf('.');
-            if (dot > 0) { base = f.getName().substring(0, dot); ext = f.getName().substring(dot); }
-            while (dest.exists()) { dest = new File(downloads, base + "_" + i + ext); i++; }
-            try (java.io.InputStream in = new java.io.FileInputStream(f);
-                 java.io.FileOutputStream out = new java.io.FileOutputStream(dest)) {
-                byte[] buf = new byte[8192]; int n;
-                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        new Thread(() -> {
+            try {
+                String savedName;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    android.content.ContentValues cv = new android.content.ContentValues();
+                    cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, f.getName());
+                    cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, guessMime(f.getName()));
+                    cv.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS);
+                    android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (uri == null) throw new Exception("MediaStore insert failed");
+                    try (java.io.InputStream in = new java.io.FileInputStream(f);
+                         java.io.OutputStream out = getContentResolver().openOutputStream(uri)) {
+                        byte[] buf = new byte[8192]; int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    }
+                    savedName = f.getName();
+                } else {
+                    File downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                    if (!downloads.exists()) downloads.mkdirs();
+                    File dest = new File(downloads, f.getName());
+                    int i = 1; String base = f.getName(), ext = "";
+                    int dot = f.getName().lastIndexOf('.');
+                    if (dot > 0) { base = f.getName().substring(0, dot); ext = f.getName().substring(dot); }
+                    while (dest.exists()) { dest = new File(downloads, base + "_" + i + ext); i++; }
+                    try (java.io.InputStream in = new java.io.FileInputStream(f);
+                         java.io.FileOutputStream out = new java.io.FileOutputStream(dest)) {
+                        byte[] buf = new byte[8192]; int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    }
+                    savedName = dest.getName();
+                }
+                final String name = savedName;
+                runOnUiThread(() -> Toast.makeText(this, "Saved to Downloads: " + name, Toast.LENGTH_LONG).show());
+            } catch (Exception e) {
+                final String msg = e.getMessage();
+                runOnUiThread(() -> Toast.makeText(this, "Download failed: " + msg, Toast.LENGTH_SHORT).show());
             }
-            Toast.makeText(this, "Saved to Downloads: " + dest.getName(), Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
+        }).start();
     }
 
     private void shareFile(File f) {
