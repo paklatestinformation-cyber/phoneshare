@@ -58,6 +58,28 @@
                     android:textColor="@color/danger" android:layout_marginTop="8dp" />
             </LinearLayout>
 
+            <!-- Background keep-alive -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:background="@color/card"
+                android:padding="16dp" android:layout_marginBottom="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="BACKGROUND KEEP-ALIVE" android:textSize="11sp" android:textStyle="bold"
+                    android:textColor="@color/text_secondary" android:letterSpacing="0.12" android:fontFamily="monospace" />
+                <TextView android:id="@+id/batteryText" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:text="Checking battery optimization..."
+                    android:textSize="13sp" android:textColor="@color/text_secondary"
+                    android:layout_marginTop="6dp" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Allow unrestricted background so the server stays live when the screen is off or locked."
+                    android:textSize="12sp" android:textColor="@color/text_secondary"
+                    android:layout_marginTop="4dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/batteryBtn" android:layout_width="wrap_content"
+                    android:layout_height="36dp" android:text="Disable battery optimization"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
             <!-- Add files -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/addFilesBtn" android:layout_width="match_parent"
@@ -104,8 +126,8 @@
                     android:layout_height="wrap_content" android:text="Muhammad Kamran Malik"
                     android:textSize="14sp" android:textStyle="bold" android:textColor="@color/accent"
                     android:layout_marginTop="2dp" />
-                <TextView android:id="@+id/devContact" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:text="+923015614357"
+                <TextView                     android:id="@+id/devContact" android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" android:text="+92 313 5275771"
                     android:textSize="13sp" android:textColor="@color/accent" android:layout_marginTop="2dp" />
             </LinearLayout>
         </LinearLayout>

@@ -44,7 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView recycler;
     private FileAdapter adapter;
     private List<File> allFiles = new ArrayList<>();
-    private TextView ipText, statusText, emptyText;
+    private TextView ipText, statusText, emptyText, batteryText;
+    private MaterialButton batteryBtn;
     private TextInputEditText searchEdit;
     private ProgressBar uploadProgress;
     private ToneHelper tone;
@@ -69,12 +70,20 @@ public class MainActivity extends AppCompatActivity {
         } else {
             startService(svc);
         }
+        sp.edit().putBoolean("sharing_enabled", true).apply();
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 300);
+        }
 
         ipText = findViewById(R.id.ipText);
         statusText = findViewById(R.id.statusText);
         emptyText = findViewById(R.id.emptyText);
         searchEdit = findViewById(R.id.searchEdit);
         uploadProgress = findViewById(R.id.uploadProgress);
+        batteryText = findViewById(R.id.batteryText);
+        batteryBtn = findViewById(R.id.batteryBtn);
         recycler = findViewById(R.id.fileList);
         recycler.setLayoutManager(new LinearLayoutManager(this));
         adapter = new FileAdapter();
@@ -87,12 +96,14 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.stopBtn).setOnClickListener(v -> {
             tone.click();
             stopService(new Intent(this, ShareService.class));
+            getSharedPreferences("ps", MODE_PRIVATE).edit().putBoolean("sharing_enabled", false).apply();
             statusText.setText("Sharing stopped");
             statusText.setTextColor(getColor(R.color.danger));
             ipText.setText("—");
         });
 
         TextView devContact = findViewById(R.id.devContact);
+        devContact.setText("+92 313 5275771");
         devContact.setOnClickListener(v -> {
             tone.click();
             Intent i = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:+923135275771"));
@@ -111,6 +122,33 @@ public class MainActivity extends AppCompatActivity {
         refreshHandler = new Handler(Looper.getMainLooper());
         refreshRunnable = new Runnable() { public void run() { refreshList(); refreshHandler.postDelayed(this, 3000); } };
         refreshHandler.postDelayed(refreshRunnable, 3000);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkBatteryOptimization();
+    }
+
+    private void checkBatteryOptimization() {
+        if (batteryText == null) return;
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        boolean ignored = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
+        batteryText.setText(ignored
+                ? "Unrestricted — server stays live with screen off / locked"
+                : "Battery optimization ON — server may stop when locked");
+        batteryText.setTextColor(androidx.core.content.ContextCompat.getColor(this,
+                ignored ? R.color.ok : R.color.danger));
+        batteryBtn.setVisibility(ignored ? View.GONE : View.VISIBLE);
+        batteryBtn.setOnClickListener(v -> {
+            try {
+                Intent i = new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                i.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(i);
+            } catch (Exception e) {
+                startActivity(new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            }
+        });
     }
 
     private void toneClick() { tone.click(); }
