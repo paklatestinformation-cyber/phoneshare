@@ -11,7 +11,7 @@ Plan: this file is the plan registry.
 - [x] 6. New professional adaptive icon + matching browser mark + correct dev phone
 - [x] 7. Version 5 / 2.0, signed release build workflow (stable signature forever)
 - [x] 8. Push, watch build green (run 46111796723), publish release v2.0
-- [ ] 9. Verify signature stability with a rebuild, update AGENTS.md, save reusable skill/vault note
+- [x] 9. Verify signature stability with a rebuild, update AGENTS.md, save reusable skill/vault note
 
 ## Decisions
 - Thumbnails generated ON THE PHONE via BitmapFactory / MediaMetadataRetriever / PdfRenderer → works offline in any PC browser.
@@ -24,5 +24,9 @@ Plan: this file is the plan registry.
 - `generate()` must declare `throws Exception` for `ParcelFileDescriptor.open` / `new PdfRenderer`.
 - Do not use `loading="lazy"` on thumbnails hidden with `display:none` — Chrome may never load them.
 
+## Verification
+Two independent CI builds of v2.0 must produce the same X.509 cert DER hash.
+Check with: download `NexLink.apk`, find `30 82 ?? ?? 30 82 ?? ?? a0 03 02 01 02 02` in the APK, hash the full DER.
+
 ## NOW
-Step 9 — rebuild verification + memory/skill bookkeeping.
+Done — v2.0 shipped, stable signature confirmed, user migrates once from v1.x.
