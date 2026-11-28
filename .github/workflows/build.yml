@@ -12,6 +12,10 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v3
+      - name: Check browser JS syntax
+        run: |
+          python3 -c "import re;h=open('app/src/main/assets/index.html').read();open('/tmp/inline.js','w').write(re.search(r'<script>(.*?)</script>',h,re.S).group(1))"
+          node --check /tmp/inline.js
       - name: Decode stable signing key
         run: base64 -d app/nexlink.jks.b64 > app/nexlink.jks
       - name: Read version name

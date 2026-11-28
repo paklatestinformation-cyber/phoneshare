@@ -31,7 +31,8 @@ h1{font-size:20px;font-weight:700;margin:0}
 .btn.out{background:transparent;color:var(--accent);border:1px solid var(--accent)}
 .btn.danger{background:var(--danger)}
 .search{width:100%;height:44px;border:1px solid var(--line);border-radius:22px;padding:0 16px;background:var(--card);color:var(--text1);margin-bottom:12px}
-.upload{border:2px dashed var(--line);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text2);margin-bottom:12px;cursor:pointer}
+.upload{border:2px dashed var(--line);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text2);margin-bottom:12px;cursor:pointer;user-select:none}
+.upstat{font-size:13px;color:var(--text2)}
 .progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px;display:none}
 .progress>div{height:100%;background:var(--accent);width:0%;transition:width .2s}
 .pct{text-align:center;font-size:12px;color:var(--text2);margin-top:4px;display:none}
@@ -57,8 +58,8 @@ h1{font-size:20px;font-weight:700;margin:0}
   </div>
 </div>
 <input id="search" class="search" placeholder="Search files..." oninput="render()">
-<div class="upload" id="drop">
-  <div>Drag &amp; drop or click to upload</div>
+<div class="upload" id="drop" role="button" tabindex="0">
+  <div class="upstat" id="upstat">Click to choose files or drag &amp; drop here</div>
   <input type="file" id="fileInput" multiple style="display:none">
   <div class="progress" id="prog"><div id="bar"></div></div>
   <div class="pct" id="pct">0%</div>
@@ -97,7 +98,7 @@ const IMAGE_EXT = new Set(['png','jpg','jpeg','gif','webp','bmp']);
 const VIDEO_EXT = new Set(['mp4','mov','mkv','webm','3gp']);
 const PREVIEW_EXT = new Set([...IMAGE_EXT,...VIDEO_EXT,'pdf']);
 const LABELS = {png:'PNG',jpg:'JPG',jpeg:'JPG',gif:'GIF',webp:'WEB',bmp:'BMP',
-  pdf:'PDF',mp4:'MP4',mov:'MOV',mkv:'MKV',webm:'WEB',3gp:'3GP',
+  pdf:'PDF',mp4:'MP4',mov:'MOV',mkv:'MKV',webm:'WEB','3gp':'3GP',
   mp3:'MP3',zip:'ZIP',txt:'TXT',json:'JSON'};
 function extLabel(ext){const e=(ext||'').toLowerCase();return LABELS[e]||(e.slice(0,3).toUpperCase()||'FILE');}
 
@@ -186,18 +187,22 @@ function printFile(rel) {
 const drop = $('drop');
 const fileInput = $('fileInput');
 drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
 drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.borderColor='var(--accent)'; });
 drop.addEventListener('dragleave', () => drop.style.borderColor='var(--line)');
 drop.addEventListener('drop', e => { e.preventDefault(); drop.style.borderColor='var(--line)'; uploadFiles(e.dataTransfer.files); });
 fileInput.addEventListener('change', e => uploadFiles(e.target.files));
 
 async function uploadFiles(files) {
+  if (!files || !files.length) return;
+  let ok = 0, fail = 0;
   for (const f of files) {
     const fd = new FormData();
     fd.append('file', f, f.name);
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/upload?path=&filename=' + encodeURIComponent(f.name));
     $('prog').style.display='block'; $('pct').style.display='block';
+    $('upstat').textContent = 'Uploading ' + f.name + '…';
     xhr.upload.onprogress = e => {
       if (e.lengthComputable) {
         const p = Math.round(e.loaded/e.total*100);
@@ -205,10 +210,16 @@ async function uploadFiles(files) {
         $('pct').textContent = p+'%  —  '+f.name;
       }
     };
-    xhr.onload = () => { $('prog').style.display='none'; $('pct').style.display='none'; $('bar').style.width='0%'; load(); };
-    xhr.onerror = () => { alert('Upload failed'); };
+    xhr.onload = () => {
+      $('prog').style.display='none'; $('pct').style.display='none'; $('bar').style.width='0%';
+      if (xhr.status >= 200 && xhr.status < 300) { ok++; $('upstat').textContent = 'Uploaded ' + ok + ' file(s)'; }
+      else { fail++; $('upstat').textContent = 'Upload failed (' + xhr.status + ')'; }
+      load();
+    };
+    xhr.onerror = () => { fail++; $('upstat').textContent = 'Upload failed: network error'; };
     xhr.send(fd);
   }
+  fileInput.value = '';
 }
 
 load();
