@@ -43,7 +43,7 @@ final class ThumbCache {
         return made;
     }
 
-    private static byte[] generate(File f) {
+    private static byte[] generate(File f) throws Exception {
         String ext = ext(f.getName());
         Bitmap bm = null;
         if (isImage(ext)) {
