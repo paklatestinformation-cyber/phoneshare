@@ -3,7 +3,7 @@ package com.zyvo.phoneshare;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
-import android.graphics.PdfRenderer;
+import android.graphics.pdf.PdfRenderer;
 import android.media.MediaMetadataRetriever;
 import android.os.ParcelFileDescriptor;
 
