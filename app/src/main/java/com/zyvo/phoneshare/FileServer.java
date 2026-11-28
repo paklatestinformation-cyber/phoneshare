@@ -5,6 +5,7 @@ import android.content.res.AssetManager;
 
 import fi.iki.elonen.NanoHTTPD;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -58,6 +59,9 @@ public class FileServer extends NanoHTTPD {
             }
             if (uri.startsWith("/view/")) {
                 return viewFile(uri);
+            }
+            if (uri.startsWith("/thumb/")) {
+                return thumbnail(uri);
             }
             if (uri.startsWith("/assets/")) {
                 return serveAsset(uri.substring(1), guessMime(uri));
@@ -175,9 +179,8 @@ public class FileServer extends NanoHTTPD {
     }
 
     private Response downloadFile(String uri) {
-        String rel = urlDecode(uri.substring("/download/".length()));
-        File f = new File(rootDir, rel);
-        if (!f.exists() || f.isDirectory()) {
+        File f = resolveSafe(uri.substring("/download/".length()));
+        if (f == null || !f.exists() || f.isDirectory()) {
             return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found");
         }
         try {
@@ -191,9 +194,8 @@ public class FileServer extends NanoHTTPD {
     }
 
     private Response viewFile(String uri) {
-        String rel = urlDecode(uri.substring("/view/".length()));
-        File f = new File(rootDir, rel);
-        if (!f.exists() || f.isDirectory()) {
+        File f = resolveSafe(uri.substring("/view/".length()));
+        if (f == null || !f.exists() || f.isDirectory()) {
             return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found");
         }
         try {
@@ -203,6 +205,30 @@ public class FileServer extends NanoHTTPD {
             return r;
         } catch (Exception e) {
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, MIME_PLAINTEXT, e.toString());
+        }
+    }
+
+    private Response thumbnail(String uri) {
+        File f = resolveSafe(uri.substring("/thumb/".length()));
+        byte[] jpeg = ThumbCache.get(f);
+        if (jpeg == null) {
+            return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "no preview");
+        }
+        Response r = newFixedLengthResponse(Response.Status.OK, "image/jpeg",
+                new ByteArrayInputStream(jpeg), jpeg.length);
+        r.addHeader("Cache-Control", "public, max-age=604800");
+        return r;
+    }
+
+    private File resolveSafe(String raw) {
+        try {
+            File f = new File(rootDir, urlDecode(raw));
+            String root = rootDir.getCanonicalPath();
+            String path = f.getCanonicalPath();
+            if (!path.equals(root) && !path.startsWith(root + File.separator)) return null;
+            return f;
+        } catch (Exception e) {
+            return null;
         }
     }
 

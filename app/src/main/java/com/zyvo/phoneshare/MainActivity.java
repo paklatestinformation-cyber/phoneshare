@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,6 +34,8 @@ import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQ_PICK = 200;
@@ -46,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private ToneHelper tone;
     private Handler refreshHandler;
     private Runnable refreshRunnable;
+    private final ExecutorService thumbExecutor = Executors.newFixedThreadPool(2);
 
     @Override
     protected void onCreate(Bundle b) {
@@ -90,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         TextView devContact = findViewById(R.id.devContact);
         devContact.setOnClickListener(v -> {
             tone.click();
-            Intent i = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:+923015614357"));
+            Intent i = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:+923135275771"));
             startActivity(i);
         });
         findViewById(R.id.devName).setOnClickListener(v -> tone.click());
@@ -260,6 +265,7 @@ public class MainActivity extends AppCompatActivity {
             File f = items.get(pos);
             h.name.setText(f.getName());
             h.icon.setText(iconFor(f.getName()));
+            loadThumb(f, h);
             long sz = f.length();
             String meta = formatSize(sz) + "  •  " + new java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(f.lastModified()));
             h.meta.setText(meta);
@@ -270,10 +276,12 @@ public class MainActivity extends AppCompatActivity {
         }
         class VH extends RecyclerView.ViewHolder {
             TextView icon, name, meta;
+            android.widget.ImageView thumb;
             android.widget.ImageButton btnDownload, btnShare, btnDelete;
             VH(View v) {
                 super(v);
                 icon = v.findViewById(R.id.icon);
+                thumb = v.findViewById(R.id.thumb);
                 name = v.findViewById(R.id.name);
                 meta = v.findViewById(R.id.meta);
                 btnDownload = v.findViewById(R.id.btnDownload);
@@ -281,6 +289,30 @@ public class MainActivity extends AppCompatActivity {
                 btnDelete = v.findViewById(R.id.btnDelete);
             }
         }
+    }
+
+    private void loadThumb(File f, FileAdapter.VH h) {
+        final String path = f.getAbsolutePath();
+        h.thumb.setTag(path);
+        h.thumb.setVisibility(View.GONE);
+        h.icon.setVisibility(View.VISIBLE);
+        String n = f.getName().toLowerCase();
+        boolean canPreview = n.endsWith(".jpg") || n.endsWith(".jpeg") || n.endsWith(".png")
+                || n.endsWith(".gif") || n.endsWith(".webp") || n.endsWith(".bmp")
+                || n.endsWith(".mp4") || n.endsWith(".3gp") || n.endsWith(".mov")
+                || n.endsWith(".mkv") || n.endsWith(".webm") || n.endsWith(".pdf");
+        if (!canPreview || f.isDirectory()) return;
+        thumbExecutor.execute(() -> {
+            byte[] jpeg = ThumbCache.get(f);
+            final Bitmap bm = jpeg == null ? null : BitmapFactory.decodeByteArray(jpeg, 0, jpeg.length);
+            runOnUiThread(() -> {
+                if (bm != null && path.equals(h.thumb.getTag())) {
+                    h.thumb.setImageBitmap(bm);
+                    h.thumb.setVisibility(View.VISIBLE);
+                    h.icon.setVisibility(View.GONE);
+                }
+            });
+        });
     }
 
     private String iconFor(String name) {

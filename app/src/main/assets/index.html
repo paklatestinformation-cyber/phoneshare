@@ -17,7 +17,12 @@ h1{font-size:20px;font-weight:700;margin:0}
 .card{background:var(--card);border-radius:var(--radius);padding:var(--pad);margin-bottom:var(--gap)}
 .row{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:0}
-.icon{width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0}
+.icon{width:56px;height:56px;border-radius:14px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;flex-shrink:0;position:relative;overflow:hidden}
+.icon img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+.icon img.ok{display:block}
+.icon .badge{position:relative;z-index:2;letter-spacing:.04em}
+.icon.has-img .badge{position:absolute;right:3px;bottom:3px;background:rgba(2,6,23,.72);border-radius:5px;padding:1px 4px;font-size:8px}
+.icon.video.has-img::after{content:"\25B6";position:absolute;z-index:1;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:rgba(2,6,23,.55);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;padding-left:2px}
 .grow{flex:1;min-width:0}
 .name{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meta{font-size:12px;color:var(--text2)}
@@ -40,9 +45,10 @@ h1{font-size:20px;font-weight:700;margin:0}
 <div class="header">
   <div class="logo">
     <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="36" cy="54" r="12" fill="none" stroke="#fff" stroke-width="9"/>
-      <circle cx="72" cy="54" r="12" fill="none" stroke="#fff" stroke-width="9"/>
-      <rect x="36" y="49" width="36" height="10" fill="#fff" rx="5"/>
+      <path fill="#fff" d="M34 28h4a8 8 0 0 1 8 8v36a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8V36a8 8 0 0 1 8-8Z"/>
+      <path fill="#fff" d="M70 28h4a8 8 0 0 1 8 8v36a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8V36a8 8 0 0 1 8-8Z"/>
+      <path fill="#fff" d="M41 49h26a5 5 0 0 1 5 5 5 5 0 0 1-5 5H41a5 5 0 0 1-5-5 5 5 0 0 1 5-5Z"/>
+      <path fill="#06B6D4" d="M31 54a5 5 0 1 0 10 0 5 5 0 1 0-10 0Zm36 0a5 5 0 1 0 10 0 5 5 0 1 0-10 0Z"/>
     </svg>
   </div>
   <div>
@@ -62,7 +68,7 @@ h1{font-size:20px;font-weight:700;margin:0}
 
 <div class="dev">
   Developer: <b>Muhammad Kamran Malik</b><br>
-  <a href="tel:+923015614357">+923015614357</a>
+  <a href="tel:+923135275771">+923135275771</a>
 </div>
 
 <script>
@@ -87,12 +93,13 @@ async function load() {
   } catch (e) { /* network hiccup, retry next poll */ }
 }
 
-function iconFor(ext) {
-  const e = (ext||'').toLowerCase();
-  const map = {png:'IMG',jpg:'IMG',jpeg:'IMG',gif:'IMG',webp:'IMG',
-    pdf:'PDF',mp4:'VID',mp3:'AUD',zip:'ZIP',txt:'TXT',json:'JSON'};
-  return map[e] || (e.toUpperCase().slice(0,3) || 'FILE');
-}
+const IMAGE_EXT = new Set(['png','jpg','jpeg','gif','webp','bmp']);
+const VIDEO_EXT = new Set(['mp4','mov','mkv','webm','3gp']);
+const PREVIEW_EXT = new Set([...IMAGE_EXT,...VIDEO_EXT,'pdf']);
+const LABELS = {png:'PNG',jpg:'JPG',jpeg:'JPG',gif:'GIF',webp:'WEB',bmp:'BMP',
+  pdf:'PDF',mp4:'MP4',mov:'MOV',mkv:'MKV',webm:'WEB',3gp:'3GP',
+  mp3:'MP3',zip:'ZIP',txt:'TXT',json:'JSON'};
+function extLabel(ext){const e=(ext||'').toLowerCase();return LABELS[e]||(e.slice(0,3).toUpperCase()||'FILE');}
 
 function fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return (b/1024).toFixed(1)+' KB';if(b<1073741824)return (b/1048576).toFixed(1)+' MB';return (b/1073741824).toFixed(1)+' GB';}
 function fmtDate(ts){const d=new Date(ts);return d.toLocaleDateString()+' '+d.toLocaleTimeString();}
@@ -104,7 +111,21 @@ function render() {
   $('empty').style.display = filtered.length ? 'none' : 'block';
   filtered.forEach(it => {
     const row = document.createElement('div'); row.className='row';
-    const ic = document.createElement('div'); ic.className='icon'; ic.textContent = iconFor(it.ext, it.isDir);
+    const ic = document.createElement('div'); ic.className = 'icon';
+    const e = (it.ext || '').toLowerCase();
+    if (!it.isDir && PREVIEW_EXT.has(e)) {
+      if (VIDEO_EXT.has(e)) ic.classList.add('video');
+      const img = document.createElement('img');
+      img.alt = '';
+      img.src = '/thumb/' + encodeURIComponent(it.relPath);
+      img.onload = () => { img.classList.add('ok'); ic.classList.add('has-img'); };
+      img.onerror = () => { img.remove(); };
+      ic.appendChild(img);
+    }
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = it.isDir ? 'DIR' : extLabel(e);
+    ic.appendChild(badge);
     const grow = document.createElement('div'); grow.className='grow';
     const nm = document.createElement('div'); nm.className='name'; nm.textContent = it.name;
     const mt = document.createElement('div'); mt.className='meta';
